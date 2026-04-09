@@ -14,7 +14,7 @@ This project builds a CNN-based image classification system to automatically ide
 
 ## Dataset
 
-- **Source:** [Kaggle - Real-life Industrial Dataset of Casting Product](https://www.kaggle.com/datasets/ravirajsinh45/real-life-industrial-dataset-of-casting-product)
+- **Source:** [Kaggle - Industrial Dataset of Casting Product](https://www.kaggle.com/datasets/ravirajsinh45/real-life-industrial-dataset-of-casting-product)
 - **Total Images:** 7,348 grayscale top-view images of submersible pump impellers (300x300 px)
 - **Non-Augmented Set:** 1,300 images (519 non-defective, 781 defective) resized from 512x512 to 300x300
 
