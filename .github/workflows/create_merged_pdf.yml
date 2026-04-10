@@ -2,30 +2,32 @@ name: Create Merged PDF
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
   create-pdf:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      
+
       - name: Install system dependencies
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0 libffi-dev shared-mime-info
-      
+
       - name: Install Python dependencies
+        run: pip install pypdf nbformat nbconvert weasyprint Pillow
+
+      - name: Write merge script
         run: |
-          pip install -q pypdf nbformat nbconvert weasyprint Pillow
-      
-      - name: Convert notebooks and merge all PDFs
-        run: |
-          python3 - << 'PYEOF'
+          cat > merge_pdfs.py << 'SCRIPTEOF'
 import os
 from pathlib import Path
 from pypdf import PdfWriter, PdfReader
@@ -78,8 +80,11 @@ merged = "casting_quality_control_complete.pdf"
 with open(merged, "wb") as f:
     writer.write(f)
 print(f"Done! {merged} = {os.path.getsize(merged):,} bytes")
-PYEOF
-      
+SCRIPTEOF
+
+      - name: Run merge script
+        run: python merge_pdfs.py
+
       - name: Upload merged PDF
         uses: actions/upload-artifact@v4
         with:
