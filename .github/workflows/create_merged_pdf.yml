@@ -1,0 +1,88 @@
+name: Create Merged PDF
+
+on:
+  workflow_dispatch:
+
+jobs:
+  create-pdf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0 libffi-dev shared-mime-info
+      
+      - name: Install Python dependencies
+        run: |
+          pip install -q pypdf nbformat nbconvert weasyprint Pillow
+      
+      - name: Convert notebooks and merge all PDFs
+        run: |
+          python3 - << 'PYEOF'
+import os
+from pathlib import Path
+from pypdf import PdfWriter, PdfReader
+import nbformat
+from nbconvert import HTMLExporter
+from weasyprint import HTML
+
+out_dir = Path("nb_pdfs")
+out_dir.mkdir(exist_ok=True)
+
+notebook_files = [
+    "notebooks/cqc_2_data_wrangling_eda.ipynb",
+    "notebooks/cqc_3_data_processing_training.ipynb",
+]
+pdf_files = [
+    "reports/cqc_1_problem_statement.pdf",
+    "reports/cqc_5_presentation.pdf",
+    "reports/cqc_6_project_report.pdf",
+]
+
+all_pdfs = []
+
+for nb_path in notebook_files:
+    print(f"Converting {nb_path}...")
+    nb = nbformat.read(nb_path, as_version=4)
+    html_exp = HTMLExporter()
+    html_exp.template_name = 'classic'
+    (body, res) = html_exp.from_notebook_node(nb)
+    pdf_out = out_dir / (Path(nb_path).stem + ".pdf")
+    HTML(string=body).write_pdf(str(pdf_out))
+    all_pdfs.append(str(pdf_out))
+    print(f"  Saved: {pdf_out} ({os.path.getsize(str(pdf_out))} bytes)")
+
+for pdf_path in pdf_files:
+    all_pdfs.append(pdf_path)
+    print(f"Added: {pdf_path}")
+
+print("Merging all PDFs...")
+writer = PdfWriter()
+for pdf_file in all_pdfs:
+    try:
+        reader = PdfReader(pdf_file)
+        for page in reader.pages:
+            writer.add_page(page)
+        print(f"  {len(reader.pages)} pages from {pdf_file}")
+    except Exception as e:
+        print(f"  Error: {pdf_file}: {e}")
+
+merged = "casting_quality_control_complete.pdf"
+with open(merged, "wb") as f:
+    writer.write(f)
+print(f"Done! {merged} = {os.path.getsize(merged):,} bytes")
+PYEOF
+      
+      - name: Upload merged PDF
+        uses: actions/upload-artifact@v4
+        with:
+          name: casting-quality-control-complete-pdf
+          path: casting_quality_control_complete.pdf
+          retention-days: 30
